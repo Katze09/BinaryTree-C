@@ -12,6 +12,8 @@ struct treeNode
     struct treeNode* rightChild; // Pointer to the right child node
 };
 
+bool hasRoot = false;
+
 // Function to set the root of the tree
 void setRoot(struct treeNode** tree, int data)
 {
@@ -31,11 +33,14 @@ void setRoot(struct treeNode** tree, int data)
     (*tree)->leftChild->rightChild = NULL;
     (*tree)->leftChild->leftChild = NULL;
     (*tree)->leftChild->parentNode = (*tree);
+
+    hasRoot = true;
 }
 
 // Function to add a node to the tree
-void addNode(struct treeNode** tree, int data)
+bool addNode(struct treeNode** tree, int data)
 {
+    bool add = false;
     if (!(*tree)->hasValue)
     {
         // If the node has no value, set its value and initialize child nodes
@@ -52,14 +57,16 @@ void addNode(struct treeNode** tree, int data)
         (*tree)->leftChild->rightChild = NULL;
         (*tree)->leftChild->leftChild = NULL;
         (*tree)->leftChild->parentNode = (*tree);
+        return true;
     } else
     {
         // If the node has a value, recursively add the node to the left or right child
         if ((*tree)->data > data)
-            addNode(&(*tree)->leftChild, data);
+            add = addNode(&(*tree)->leftChild, data);
         else
-            addNode(&(*tree)->rightChild, data);
+            add = addNode(&(*tree)->rightChild, data);
     }
+    return add;
 }
 
 void addStructNode(struct treeNode** tree, struct treeNode** node)
@@ -96,63 +103,107 @@ bool isValueInTree(struct treeNode** tree, int value)
 }
 
 // Function to delete a node from the tree
-void deleteNode(struct treeNode** tree, int value)
+bool deleteNode(struct treeNode** tree, int value)
 {
+    bool delete = false;
     if ((*tree)->hasValue)
     {
+        // Check if the current node has the value to be deleted
         if ((*tree)->data == value)
         {
+            // Case 1: Node has no children
             if(!(*tree)->rightChild->hasValue && !(*tree)->leftChild->hasValue)
             {
-                if((*tree)->parentNode->data < value)
-                    (*tree)->parentNode->rightChild->hasValue = false;
-                else
-                    (*tree)->parentNode->leftChild->hasValue = false;
-            } else if((*tree)->rightChild->hasValue && !(*tree)->leftChild->hasValue)
-            {
-                if((*tree)->parentNode->data < (*tree)->rightChild->data)
+                if((*tree)->parentNode != NULL)
                 {
-                    (*tree)->parentNode->rightChild = (*tree)->rightChild;
-                    (*tree)->parentNode->rightChild->parentNode = (*tree)->parentNode;
-                }else {
-                    (*tree)->parentNode->leftChild = (*tree)->rightChild;
-                    (*tree)->parentNode->leftChild->parentNode = (*tree)->parentNode;
-                }
-            } else if(!(*tree)->rightChild->hasValue && (*tree)->leftChild->hasValue)
-            {
-                if((*tree)->parentNode->data < (*tree)->leftChild->data)
-                {
-                    (*tree)->parentNode->rightChild = (*tree)->leftChild;
-                    (*tree)->parentNode->rightChild->parentNode = (*tree)->parentNode;
-                }else {
-                    (*tree)->parentNode->leftChild = (*tree)->leftChild;
-                    (*tree)->parentNode->leftChild->parentNode = (*tree)->parentNode;
-                }
-            } else 
-            {
-                if((*tree)->parentNode->data < (*tree)->data)
-                {
-                    struct treeNode** tempNode = &(*tree)->rightChild;
-                    (*tree)->leftChild->parentNode = (*tree)->parentNode;
-                    (*tree)->parentNode->rightChild = (*tree)->leftChild;
-                    addStructNode(&(*tree), tempNode);
+                    if((*tree)->parentNode->data < value)
+                        (*tree)->parentNode->rightChild->hasValue = false;
+                    else
+                        (*tree)->parentNode->leftChild->hasValue = false;
                 } else 
                 {
+                    (*tree)->hasValue = false;
+                    hasRoot = false;
+                }
+            } 
+            // Case 2: Node has only a right child
+            else if((*tree)->rightChild->hasValue && !(*tree)->leftChild->hasValue)
+            {
+                if((*tree)->parentNode != NULL)
+                {
+                    if((*tree)->parentNode->data < (*tree)->rightChild->data)
+                    {
+                        (*tree)->parentNode->rightChild = (*tree)->rightChild;
+                        (*tree)->parentNode->rightChild->parentNode = (*tree)->parentNode;
+                    } else 
+                    {
+                        (*tree)->parentNode->leftChild = (*tree)->rightChild;
+                        (*tree)->parentNode->leftChild->parentNode = (*tree)->parentNode;
+                    }
+                } else
+                {
+                    (*tree) = (*tree)->rightChild;
+                    (*tree)->parentNode = NULL;
+                }
+            } 
+            // Case 3: Node has only a left child
+            else if(!(*tree)->rightChild->hasValue && (*tree)->leftChild->hasValue)
+            {
+                if((*tree)->parentNode != NULL)
+                {
+                    if((*tree)->parentNode->data < (*tree)->leftChild->data)
+                    {
+                        (*tree)->parentNode->rightChild = (*tree)->leftChild;
+                        (*tree)->parentNode->rightChild->parentNode = (*tree)->parentNode;
+                    } else 
+                    {
+                        (*tree)->parentNode->leftChild = (*tree)->leftChild;
+                        (*tree)->parentNode->leftChild->parentNode = (*tree)->parentNode;
+                    }
+                } else 
+                {
+                    (*tree) = (*tree)->leftChild;
+                    (*tree)->parentNode = NULL;
+                }
+            } 
+            // Case 4: Node has both left and right children
+            else 
+            {
+                if((*tree)->parentNode != NULL)
+                {
+                    if((*tree)->parentNode->data < (*tree)->data)
+                    {
+                        struct treeNode** tempNode = &(*tree)->rightChild;
+                        (*tree)->leftChild->parentNode = (*tree)->parentNode;
+                        (*tree)->parentNode->rightChild = (*tree)->leftChild;
+                        addStructNode(&(*tree), tempNode);
+                    } 
+                    else 
+                    {
+                        struct treeNode** tempNode = &(*tree)->rightChild;
+                        (*tree)->leftChild->parentNode = (*tree)->parentNode;
+                        (*tree)->parentNode->leftChild = (*tree)->leftChild;
+                        addStructNode(&(*tree), tempNode);
+                    }
+                } else
+                {
                     struct treeNode** tempNode = &(*tree)->rightChild;
-                    (*tree)->leftChild->parentNode = (*tree)->parentNode;
-                    (*tree)->parentNode->leftChild = (*tree)->leftChild;
+                    (*tree) = (*tree)->leftChild;
+                    (*tree)->parentNode = NULL;
                     addStructNode(&(*tree), tempNode);
                 }
             }
+            return true;
         } else
         {
             // If the value is greater, recursively delete in the right child; otherwise, delete in the left child
-            if ((*tree)->data < value)
-                deleteNode(&(*tree)->rightChild, value);
-            else
-                deleteNode(&(*tree)->leftChild, value);
+            if ((*tree)->data < value && (*tree)->rightChild->hasValue)
+                delete = deleteNode(&(*tree)->rightChild, value);
+            else if ((*tree)->leftChild->hasValue)
+                delete = deleteNode(&(*tree)->leftChild, value);
         }
     }
+    return delete;
 }
 
 // Function to print the tree
@@ -213,7 +264,6 @@ void freeTreeMemory(struct treeNode** tree)
 {
     if ((*tree)->hasValue)
     {
-        // Recursively free the memory of the left and right child nodes, and then free the current node
         freeTreeMemory(&(*tree)->leftChild);
         freeTreeMemory(&(*tree)->rightChild);
         free((*tree));
@@ -224,7 +274,6 @@ void freeTreeMemory(struct treeNode** tree)
 int main()
 {
     struct treeNode* tree = malloc(sizeof(struct treeNode));
-    bool hasRoot = false;
     bool run = true;
     while (run)
     {
@@ -248,13 +297,11 @@ int main()
             printf("Enter the number to add:\n");
             scanf("%d", &node);
             if (!hasRoot)
-            {
                 setRoot(&tree, node);
-                hasRoot = true;
-            }
+            else if(addNode(&tree, node))
+                printf("Added Successfully\n");
             else
-                addNode(&tree, node);
-            printf("Added Successfully\n");
+                printf("Cannot be added\n");
             break;
         case 2:
             printf("Enter the number to search:\n");
@@ -267,8 +314,10 @@ int main()
         case 3:
             printf("Enter the number to delete:\n");
             scanf("%d", &node);
-            deleteNode(&tree, node);
-            printf("Value Deleted\n");
+            if (deleteNode(&tree, node))
+                printf("Value Deleted\n");
+            else
+                printf("Could not be deleted\n");
             break;
         case 4:
             printf("Tree Size: %d\n", getTreeSize(&tree));
